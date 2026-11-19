@@ -1,0 +1,32 @@
+机器人 API
+
+运行 platform = run_robot_control。platform.robots 是按通信配置顺序排列的 API 结构体数组。
+单台时可取 robotAPI = platform.robots(1)。多台时按 platform.robots(k).name 或配置顺序选择。
+所有读写句柄只操作该台机器人。关闭后重新启动平台会获得新句柄。
+
+robotAPI.getPose()          返回 name、tagId、positionMm、headingDeg、valid、reason、
+                            capturedAt、tagCenterMm 和 tagHeadingDeg。
+robotAPI.getPosition()      返回 positionMm、valid、reason、capturedAt。
+robotAPI.getHeading()       返回 headingDeg、valid、reason、capturedAt。
+robotAPI.getStatus()        返回通信状态及最近有效性信息。communication 中含 connected、
+                            portOpen、lastContact 和 message。connected 为最近探测或
+                            电机回包的结果，lastContact 为最近收到有效回包的时间。
+robotAPI.isConnected()      主动用只读 N 指令探测通信，返回逻辑值。
+robotAPI.sendMotorCommand(left,right)
+                            发送 D 命令，等待 d 回包。左右轮分别传入整数 steps/s。
+                            GCtronic 文档的 Asercom ASCII D 命令范围为每轮 -1000～1000。
+                            超出协议范围、非整数或未收到有效回包时报告错误。
+                            左右轮均为零时，按 stop() 的流程核对零速。
+robotAPI.stop()             发送 D,0,0 并等待 d 回包，再用只读 E 核对两轮速度设定值。
+robotAPI.disconnect()       关闭单台串口。若本会话有未确认停止的非零命令，先尝试停车。
+                            有请求进行中时，等待该请求结束后再执行停车和释放。
+platform.update()           同步更新一帧，整组共用。长时间运行的 MATLAB 循环中可显式调用。
+platform.close()            停止后台更新并关闭所有设备。也可直接关闭监视窗口。
+
+positionMm 是世界 [X,Y]，单位 mm。headingDeg 从 +X 起算、逆时针为正，范围 [-180,180)。
+invalid 时以 valid=false 为准，并返回 NaN 坐标或角度。capturedAt 是该帧开始采集的时间。
+Tag 缺失、重复 ID、越界、射线无交点、几何异常、尺寸误差过大或缓存过期均会给出原因。
+非零指令的 d 回包表示协议确认。停车用 E 核对设定值，实物是否停稳需现场验证。
+定位丢失由未来的运动程序通过 valid 和 reason 处理。
+未来编写运动时，从 user_motion_template.m 复制接口，保留 robotAPI 和 userConfig 形参。
+将参数放到该运动程序自己的配置文件。运行循环时检查位姿有效性并明确安排停车和退出处理。

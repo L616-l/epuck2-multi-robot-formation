@@ -1,0 +1,4 @@
+/epuck_build/data/
+/epuck_build/logs/
+*.asv
+*.m~
